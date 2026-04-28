@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Win69 PRO MAX</title>
+
+<style>
+body{
+  margin:0;
+  font-family:sans-serif;
+  color:white;
+  text-align:center;
+  background: radial-gradient(circle,#020617,#000);
+  overflow-x:hidden;
+}
+
+/* Title neon */
+h1{
+  color:#0ff;
+  text-shadow:0 0 10px #0ff,0 0 30px #0ff;
+  animation: glow 2s infinite alternate;
+}
+@keyframes glow{
+  from{ text-shadow:0 0 10px #0ff;}
+  to{ text-shadow:0 0 30px #0ff;}
+}
+
+/* Buttons */
+button{
+  margin:5px;
+  padding:10px;
+  border:none;
+  border-radius:10px;
+  background:#111;
+  color:#0ff;
+  box-shadow:0 0 10px #0ff;
+  transition:0.2s;
+}
+button:hover{transform:scale(1.1);}
+
+/* Game card */
+.game{
+  display:none;
+  margin:20px auto;
+  padding:15px;
+  width:90%;
+  max-width:400px;
+  border-radius:12px;
+  background:rgba(255,255,255,0.05);
+  box-shadow:0 0 20px rgba(0,255,255,0.2);
+}
+
+/* Effects */
+.win{background:#013220;}
+.lose{background:#300000;}
+
+#jackpot{
+  color:gold;
+  animation: blink 1s infinite;
+}
+@keyframes blink{50%{opacity:0.5}}
+
+#aviator_text{
+  font-size:30px;
+  color:#0f0;
+}
+
+/* Slot animation */
+.spin{
+  animation: spin 0.1s infinite;
+}
+@keyframes spin{
+  50%{transform:scale(1.2)}
+}
+</style>
+</head>
+
+<body>
+
+<h1>🎰 Win69 PRO MAX</h1>
+
+<!-- MENU -->
+<button onclick="show('tx')">Tài Xỉu</button>
+<button onclick="show('slot')">Slot</button>
+<button onclick="show('guess')">Đoán</button>
+<button onclick="show('aviator')">Aviator</button>
+<button onclick="show('eo')">Lẻ/Chẵn</button>
+<button onclick="show('hl')">High/Low</button>
+<button onclick="show('box')">Hộp</button>
+<button onclick="show('spin')">Spin</button>
+
+<p id="money">💰 100000</p>
+<p id="jackpot">💥 1000000</p>
+
+<!-- TÀI XỈU -->
+<div id="tx" class="game">
+<input id="amount">
+<button onclick="bet('tai')">Tài</button>
+<button onclick="bet('xiu')">Xỉu</button>
+<p id="tx_res"></p>
+</div>
+
+<!-- SLOT -->
+<div id="slot" class="game">
+<input id="slot_money">
+<button onclick="playSlot()">Quay</button>
+<h2 id="slot_res">🎰 🎰 🎰</h2>
+</div>
+
+<!-- ĐOÁN -->
+<div id="guess" class="game">
+<input id="g_num"><input id="g_money">
+<button onclick="playGuess()">Chơi</button>
+<p id="g_res"></p>
+</div>
+
+<!-- AVIATOR -->
+<div id="aviator" class="game">
+<h2 id="aviator_text">✈️ x1.00</h2>
+</div>
+
+<!-- EO -->
+<div id="eo" class="game">
+<input id="eo_money">
+<button onclick="eo('even')">Chẵn</button>
+<button onclick="eo('odd')">Lẻ</button>
+<p id="eo_res"></p>
+</div>
+
+<!-- HL -->
+<div id="hl" class="game">
+<input id="hl_money">
+<button onclick="hl('high')">High</button>
+<button onclick="hl('low')">Low</button>
+<p id="hl_res"></p>
+</div>
+
+<!-- BOX -->
+<div id="box" class="game">
+<input id="box_money">
+<button onclick="box()">Mở</button>
+<p id="box_res"></p>
+</div>
+
+<!-- SPIN -->
+<div id="spin" class="game">
+<button onclick="spinGame()">Quay</button>
+<p id="spin_res"></p>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket=io();
+let money=100000;
+
+/* NAV */
+function show(g){
+document.querySelectorAll('.game').forEach(x=>x.style.display='none');
+document.getElementById(g).style.display='block';
+}
+
+/* EFFECT */
+function effect(win){
+document.body.className = win ? "win" : "lose";
+setTimeout(()=>document.body.className="",300);
+}
+
+/* TÀI XỈU */
+function bet(c){
+socket.emit("bet_taixiu",{choice:c,amount:parseInt(amount.value)});
+}
+
+/* SLOT */
+function playSlot(){
+let el=document.getElementById("slot_res");
+el.classList.add("spin");
+
+let spin=setInterval(()=>{
+el.innerText="🎰 🎰 🎰";
+},100);
+
+setTimeout(()=>{
+clearInterval(spin);
+el.classList.remove("spin");
+socket.emit("slot",parseInt(slot_money.value));
+},1000);
+}
+
+/* GUESS */
+function playGuess(){
+socket.emit("guess_number",{number:parseInt(g_num.value),amount:parseInt(g_money.value)});
+}
+
+/* EO */
+function eo(c){
+socket.emit("even_odd",{choice:c,amount:parseInt(eo_money.value)});
+}
+
+/* HL */
+function hl(c){
+socket.emit("high_low",{choice:c,amount:parseInt(hl_money.value)});
+}
+
+/* BOX */
+function box(){
+socket.emit("box",parseInt(box_money.value));
+}
+
+/* SPIN */
+function spinGame(){
+socket.emit("spin");
+}
+
+/* SOCKET */
+
+socket.on("taixiu_result",d=>{
+tx_res.innerText=d.dice.join("-")+"="+d.result;
+jackpot.innerText=d.jackpot;
+if(d.players[socket.id]) money=d.players[socket.id].money;
+update();
+});
+
+socket.on("slot_result",r=>{
+slot_res.innerText=r.result.join(" ");
+effect(r.reward>0);
+});
+
+socket.on("guess_result",r=>{
+g_res.innerText=r.win?"🎉 Win":"❌ Lose";
+effect(r.win);
+});
+
+socket.on("even_odd_result",r=>{
+eo_res.innerText=r.num+"="+r.result;
+});
+
+socket.on("hl_result",r=>{
+hl_res.innerText=r.num+"="+r.result;
+});
+
+socket.on("box_result",r=>{
+box_res.innerText=r>0?"🎉+"+r:"💣";
+effect(r>0);
+});
+
+socket.on("spin_result",r=>{
+spin_res.innerText=r;
+effect(r>0);
+});
+
+socket.on("aviator_update",m=>{
+aviator_text.innerText="✈️ x"+m;
+});
+
+socket.on("aviator_crash",m=>{
+aviator_text.innerText="💥 x"+m;
+});
+
+/* UPDATE MONEY */
+function update(){
+document.getElementById("money").innerText="💰 "+money;
+}
+</script>
+
+</body>
+</html>
